@@ -1,0 +1,194 @@
+//***********************************************************
+// Author: D.S. Malik
+//
+// Program: Postfix Calculator  
+// This program evaluates postfix expressions.
+//***********************************************************
+  
+#include <iostream>  
+#include <iomanip> //used for setprecision
+#include <fstream> //used to read and write files
+#include "mystack.h" //used to create and use stacks
+ 
+using namespace std; 
+//declare the functions that will be used to evaluate postfix expressions, then define them later on
+void evaluateExpression(ifstream& inpF, ofstream& outF, 
+                        stackType<double>& stack,
+                        char& ch, bool& isExpOk);
+void evaluateOpr(ofstream& out, stackType<double>& stack,
+                 char& ch, bool& isExpOk);
+void discardExp(ifstream& in, ofstream& out, char& ch);
+void printResult(ofstream& outF, stackType<double>& stack,
+                 bool isExpOk);
+
+int main()
+{
+    bool expressionOk; //declare a bool to track if valid postfix expression
+    char ch; //declare a char
+    stackType<double> stack(100); //initialize a stack of size 100
+    ifstream infile; //declare input stream to read postfix expression from a file
+    ofstream outfile; //declare output stream to write the result of the evaluated postfix expression
+ 
+    infile.open("RpnData.txt"); //open the text file
+
+    if (!infile) //if the file is not found
+    {
+        cout << "Cannot open the input file. "
+             << "Program terminates!" << endl;
+        return 1; //terminate the program
+    }
+     
+    outfile.open("RpnOutput.txt"); //open the output file
+
+    outfile << fixed << showpoint; //set the output file to output numbers as floats, even if we only have trailing zeroes 
+    outfile << setprecision(2); //set the amount of decimal places for the outputted numbers to 2 decimal places
+
+    infile >> ch; //read the next character from the RpnData.txt
+    while (infile) //while there is a character to read
+    {
+        stack.initializeStack(); //create an empty stack
+        expressionOk = true; //by default, the expression is a valid postfix expression
+        outfile << ch; //store the current character 
+
+        evaluateExpression(infile, outfile, stack, ch, 
+                           expressionOk); //evaluate the expression and store the result in the stack
+        printResult(outfile, stack, expressionOk); //print hte result if the evaluated expression has no errors
+        infile >> ch; //read the next character
+    } //end while 
+
+    infile.close(); //when we have read all the characters, close the input file
+    outfile.close(); //and close the output file
+
+    return 0;
+
+} //end main
+
+
+void evaluateExpression(ifstream& inpF, ofstream& outF, stackType<double>& stack,char& ch, bool& isExpOk)
+{ //function to evaluate a postfix expression
+    double num; //declare num to store numbers encountered in the input file
+
+    while (ch != '=') //if we do not see an '=', we have not reached the end of the postfix expresion
+    {
+        switch (ch) //switch statement to check if the current character is '#' or something else
+        {
+        case '#': //if we see '#', the following character is a number
+            inpF >> num; //read the number following the '#'
+            outF << num << " "; //store the number following '#'
+            if (!stack.isFullStack()) //if the stack is not full
+                stack.push(num); //push the current number onto the stack
+            else //if the stack is full, terminate the program
+            {
+                cout << "Stack overflow. "
+                     << "Program terminates!" << endl;
+                exit(0);  //terminate the program
+            }
+
+            break; //break out of the switch statement and proceed to the if loop below
+        default: //if we have not reached the end of the expression but the current character is not '#',
+            evaluateOpr(outF, stack, ch, isExpOk); //then we have seen an operator, check if the expression is valid, then evaluate if it is
+        }//end switch
+
+        if (isExpOk) //if no errors were encountered when reading the expression
+        {
+            inpF >> ch; //read the next character
+            outF << ch; //and store it
+
+            if (ch != '#') //if we do not see another number,
+                outF << " "; //add a space to the output file
+        }
+        else //if the expression is not valid
+            discardExp(inpF, outF, ch); //discard the current expression
+    } //end while (!= '=')
+} //end evaluateExpression
+
+
+void evaluateOpr(ofstream& out, stackType<double>& stack,
+              char& ch, bool& isExpOk)
+{ //function to evaluate an operation
+    double op1, op2; //declare variables to store the two operands of the postfix expression
+
+    if (stack.isEmptyStack()) //if the stack has no numbers, we cannot evaluate the expression
+    {
+        out << " (Not enough operands)";
+        isExpOk = false; //the expression is invalid, so set the flag to false
+    }
+    else //if the stack has a top
+    {
+        op2 = stack.top(); //store the top of the stack as the first operand
+        stack.pop(); //and remove the first operand
+
+        if (stack.isEmptyStack()) //if the stack is empty, 
+        {
+            out << " (Not enough operands)"; //we only have one operand, so the postfix expression is invalid
+            isExpOk = false; //set the valid expression flag to false
+        }
+        else //else if there is a second element in the stack
+        {
+            op1 = stack.top(); //store the top of the stack as the second operand
+            stack.pop(); //and pop the operand from the stack
+
+            switch (ch) //determine how to handle the current character, which is the operator
+            {
+            case '+': //if ch is a '+', add the two operands
+                stack.push(op1 + op2); //and store the result into the now empty stack
+                break; //exit the switch statement
+            case '-': //if ch is a '-', subtract the two operands
+                stack.push(op1 - op2); //and store the result in the now empty stack
+                break; //exit the switch statement
+            case '*': //if the operator is multiplication
+                stack.push(op1 * op2); //multiply the two operators and store result into the stack
+                break;//exit the switch statement
+            case '/': //if operator is division
+                if (op2 != 0) //check that we are not dividing by zero
+                    stack.push(op1 / op2); //and store the result into the stack
+                else //otherwise print an error because we are dividing by zero
+                {
+                    out << " (Division by 0)";
+                    isExpOk = false; //if we are dividing by zero, the expression is invalid
+                }
+                break;//exit the switch statement
+            default:  //if we do not see a valid operator
+                out << " (Illegal operator)"; //print an error
+                isExpOk = false;//we have encountered an invalid expression, so set the valid expression flag to false
+            }//end switch
+        } //end else
+    } //end else
+} //end evaluateOpr
+//
+
+void discardExp(ifstream& in, ofstream& out, char& ch)
+{
+    while (ch != '=') //while we have not reached the end of the expression
+    {
+        in.get(ch); //read the next character
+        out << ch; //and add it to the output file
+    }
+} //end discardExp
+
+void printResult(ofstream& outF, stackType<double>& stack,
+                 bool isExpOk)
+{
+    double result; //declare a variable to store the result of an expression
+
+    if (isExpOk) //if we have encountered a valid expression, begin printing the result
+    {
+        if (!stack.isEmptyStack()) //if the stack has elements
+        {
+            result = stack.top(); //set the top element of the stack as the result
+            stack.pop(); //and pop the top element
+
+            if (stack.isEmptyStack()) //if the stack is empty,
+                outF << result << endl; //print the result
+            else
+                outF << " (Error: Too many operands)" << endl; //if the stack is not empty after reading the top element, we have encountered an error in the expression
+        } //end if
+        else
+            outF << " (Error in the expression)" << endl; //if the stack is empty, we have encountered an error in the expression
+    }
+    else
+        outF << " (Error in the expression)" << endl; //if the expression is invalid, we have encountered an error in the expression
+
+    outF << "_________________________________"  //print a line after printing the result of the current expression
+         << endl << endl;
+} //end printResult

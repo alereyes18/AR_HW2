@@ -1,0 +1,206 @@
+//Header File: linkedStack.h 
+
+#ifndef H_StackType //check whether H_StackType header file has previously been defined
+#define H_StackType //if this is the first time the header file is being defined, define H_StackType and include its contents
+                    //if the H_StackType is defined again in the same file, the ifndef guard will make sure its contents are ignored,
+                    //because the header file has already been defined
+ 
+#include <iostream> //include standard cpp input and output stream objects (includes for cin, cout, istream, ostream, etc. )
+#include <cassert> //includes assert.h that allows for the use of the "assert" function to compare an expression to 0
+ 
+#include "stackADT.h" //include the stackADT header file from the current directory
+
+using namespace std; //allows for the use of objects within the std namespace,
+                    //otherwise we would have to do std::cout, std::endl, etc.
+
+
+template <class Type> //using a template for the following struct allows the struct to utilize different datatypes
+                    //instead of explicitly creating struct nodeType<int>, we can create a node of any data type
+struct nodeType
+{
+    Type info; //a node stores a data value
+    nodeType<Type> *link; //and a reference to the next node
+};
+
+template <class Type>
+class linkedStackType: public stackADT<Type> //linkedStackType inherits member variables and methods from the stackADT class of any specified data
+{
+public:
+
+//The below code declares the member functions of the linkedStackType class, which are later defined using templates
+    const linkedStackType<Type>& operator=
+                              (const linkedStackType<Type>&); //overload assignment operator (=)
+
+
+    bool isEmptyStack() const; //checks if a stack is empty
+
+
+    bool isFullStack() const; //checks if a stack is full
+
+
+    void initializeStack(); //initialize an empty stack
+
+
+    void push(const Type& newItem); //push a new item into the stack
+
+
+    Type top() const; //get the data at the top of the stack
+
+
+    void pop(); //remove the top element from the stack
+
+
+    linkedStackType(); //default constructor for a stack
+
+
+    linkedStackType(const linkedStackType<Type>& otherStack); //move constructor 
+  
+
+    ~linkedStackType(); //destructor for the stack object
+
+private:
+    nodeType<Type> *stackTop; //pointer to the stack
+
+    void copyStack(const linkedStackType<Type>& otherStack); //copy constructor
+
+};
+
+
+    
+template <class Type> 
+linkedStackType<Type>::linkedStackType() //default constructor for a stack
+{
+    stackTop = nullptr; //a newly created stack has no elements, so the top node is a nullptr
+}
+
+template <class Type>
+bool linkedStackType<Type>::isEmptyStack() const //return true if a stack has elements, false if the stack is empty
+{
+    return(stackTop == nullptr); //if the node at the top of the stack has a nullptr, the stack has no elements,
+    //otherwise stackTop would point to a node in the stack
+} 
+
+template <class Type>
+bool linkedStackType<Type>:: isFullStack() const //function to check whether a stack is full
+{
+    return false; //the stack will never be full because the linked list implementation allows for dynamic allocation of memory for new stack elements
+} 
+
+template <class Type>
+void linkedStackType<Type>:: initializeStack() //initialzie a stack with no elements
+{
+    nodeType<Type> *temp; //create a temp node
+
+    while (stackTop != nullptr) //while the stack is not empty
+    {
+        temp = stackTop;//temp becomes the stack top
+                           
+        stackTop = stackTop->link; //and the current stack top becomes the next node in the stack
+                                   
+        delete temp;//delete the temp node, which means delete the previous stack top since we have assigned the stack top as the next node
+    }
+} 
+
+template <class Type>
+void linkedStackType<Type>::push(const Type& newElement) //function to add a new element to the top of the stack
+{
+    nodeType<Type> *newNode;  //declare a new node
+
+    newNode = new nodeType<Type>; //instantiate the new node
+
+    newNode->info = newElement; //set the info stored in the new node to be the info being added to the stack
+    newNode->link = stackTop;  //set the link to the new node to the current stack top
+    stackTop = newNode; //set the new node as the new stack top, because a stack is a LIFO structure
+                             
+} //end push
+
+
+template <class Type>
+Type linkedStackType<Type>::top() const //function to return data at the top of the stack
+{
+    assert(stackTop != nullptr); //check that the stack is not empty
+                              
+    return stackTop->info; //return the info of the top node of the stack
+}//end top
+
+template <class Type>
+void linkedStackType<Type>::pop() //function to remove the top element from the stack
+{
+    nodeType<Type> *temp;   //declare a new temp node
+
+    if (stackTop != nullptr) //if the stack is not empty
+    {
+        temp = stackTop;  //set temp as the current stack top
+
+        stackTop = stackTop->link; //set the current stack top as the next node
+                                    
+        delete temp; //delete the previous stack top
+    }
+    else
+        cout << "Cannot remove from an empty stack." << endl; //if the stack is empty, return a message
+}//end pop
+
+template <class Type> 
+void linkedStackType<Type>::copyStack //function to make a copy of a stack
+                     (const linkedStackType<Type>& otherStack)
+{
+    nodeType<Type> *newNode, *current, *last; //declare three new nodes
+
+    if (stackTop != nullptr) //if the stack is not empty
+        initializeStack(); //create a new stack
+
+    if (otherStack.stackTop == nullptr) //if otherStack is empty,
+        stackTop = nullptr; //the copy is also empty, so just set the stackTop of the copied stack to nullptr
+    else
+    {
+        current = otherStack.stackTop;  //else if otherStack has elements,
+                                        //set the node current to the stackTop of otherStack
+          
+        stackTop = new nodeType<Type>;  //create a new node and set it as the stackTop of the copied stack
+
+        stackTop->info = current->info; //assign the info of the copied stack stack top to the info of otherStack stacktop
+        stackTop->link = nullptr;  //set the link of copied stack stackTop to nullptr
+                               
+        last = stackTop; //set node last to copied stack stackTop       
+        current = current->link; //advance current to the next node in otherStack
+           
+        while (current != nullptr) //while there is a next element in otherStack
+        {
+            newNode = new nodeType<Type>; //create a new node
+
+            newNode->info = current->info; //assign new node info as the info of the current node from otherStack
+            newNode->link = nullptr; //set link for the new node as nullptr
+            last->link = newNode; //set the link of the last node in the copied stack to be the newly copied node
+            last = newNode; //set the last node to be the new node
+            current = current->link; //advance the current node of otherStack
+        }//loop until we have copied all of the stack nodes
+    }
+} 
+
+ 
+template <class Type>   
+linkedStackType<Type>::linkedStackType(
+                      const linkedStackType<Type>& otherStack) //copy constructor
+{
+    stackTop = nullptr; //set the top of the stack to be copied as nullptr
+    copyStack(otherStack); //call copy stack to copy the contents of otherStack onto the copied stack
+}
+
+  
+template <class Type> 
+linkedStackType<Type>::~linkedStackType() //destructor
+{
+    initializeStack(); //call initializeStack to set the current stack to have no nodes/elements
+}
+    
+template <class Type>   
+const linkedStackType<Type>& linkedStackType<Type>::operator=
+    			  (const linkedStackType<Type>& otherStack) //overload assignment operator (=)
+{ 
+    if (this != &otherStack) //check that we are not assigning a stack to itself
+        copyStack(otherStack); //copy the contents of otherStack to the copied stack
+
+    return *this; //return the copied stack
+}
+
+#endif //close the ifndef directive, indicating the end of H_StackType definition
